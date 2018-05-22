@@ -51,6 +51,7 @@ import (
 	"sync"
 	"syscall"
 	"time"
+	"path/filepath"
 )
 
 // Cmd represents an external command, similar to the Go built-in os/exec.Cmd.
@@ -58,11 +59,12 @@ import (
 // should not be modified, except Env which can be set before calling Start.
 // To create a new Cmd, call NewCmd or NewCmdOptions.
 type Cmd struct {
-	Name   string
-	Args   []string
-	Env    []string
-	Stdout chan string // streaming STDOUT if enabled, else nil (see Options)
-	Stderr chan string // streaming STDERR if enabled, else nil (see Options)
+	Name       string
+	Args       []string
+	Env        []string
+	WorkDir    string
+	Stdout     chan string // streaming STDOUT if enabled, else nil (see Options)
+	Stderr     chan string // streaming STDERR if enabled, else nil (see Options)
 	*sync.Mutex
 	started    bool          // cmd.Start called, no error
 	stopped    bool          // Stop called
@@ -268,9 +270,24 @@ func (c *Cmd) run() {
 		close(c.doneChan)
 	}()
 
+	// Add working directory if exists
+	if filepath.Base(c.Name) == c.Name && c.WorkDir != "" {
+		if lp, err := exec.LookPath(c.Name); err != nil {
+			filePath, err := filepath.Abs(filepath.Join(c.WorkDir, c.Name))
+			if err == nil {
+				args := []string{filePath}
+				c.Name = filePath
+				c.Args = append(args, c.Args...)
+			}
+		} else {
+			c.Name = lp
+		}
+	}
+
 	// //////////////////////////////////////////////////////////////////////
 	// Setup command
 	// //////////////////////////////////////////////////////////////////////
+
 	cmd := exec.Command(c.Name, c.Args...)
 
 	// Set process group ID so the cmd and all its children become a new
