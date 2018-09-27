@@ -281,7 +281,7 @@ func (c *Cmd) run() {
 		if lp, err := exec.LookPath(c.Name); err != nil {
 			filePath, err := filepath.Abs(filepath.Join(c.WorkDir, c.Name))
 			if err == nil {
-				args := []string{filePath}
+				args := []string{}
 				c.Name = filePath
 				c.Args = append(args, c.Args...)
 			}
